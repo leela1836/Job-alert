@@ -1,0 +1,90 @@
+[
+  {
+    "name": "Y Combinator Startup Jobs",
+    "url": "https://www.ycombinator.com/jobs/",
+    "type": "web",
+    "category": [
+      "AI Engineer",
+      "Agentic AI",
+      "LLM Engineer",
+      "Software Engineer",
+      "Backend Engineer",
+      "Startup Engineering"
+    ],
+    "locations": [
+      "Bangalore",
+      "Hyderabad",
+      "Chennai",
+      "Mumbai",
+      "Pune",
+      "Remote"
+    ]
+  },
+  {
+    "name": "AI Jobs Feed",
+    "url": "https://aijobs.net/feed/",
+    "type": "rss",
+    "category": [
+      "AI Engineer",
+      "Machine Learning",
+      "LLM"
+    ]
+  },
+  {
+    "name": "Hacker News Who Is Hiring",
+    "url": "https://hnrss.org/jobs",
+    "type": "rss",
+    "category": [
+      "Software Engineer",
+      "Startup",
+      "Backend"
+    ]
+  },
+  {
+    "name": "We Work Remotely Programming Jobs",
+    "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss",
+    "type": "rss",
+    "category": [
+      "Remote Developer",
+      "Python",
+      "Backend"
+    ]
+  },
+  {
+    "name": "Remote OK AI Jobs",
+    "url": "https://remoteok.com/remote-ai-jobs.rss",
+    "type": "rss",
+    "category": [
+      "AI",
+      "ML",
+      "LLM"
+    ]
+  },
+  {
+    "name": "Remote OK Developer Jobs",
+    "url": "https://remoteok.com/remote-dev-jobs.rss",
+    "type": "rss",
+    "category": [
+      "Software Engineer",
+      "Backend",
+      "Cloud"
+    ]
+  },
+  {
+    "name": "Indeed Python Jobs RSS",
+    "url": "https://www.indeed.com/rss?q=python+developer",
+    "type": "rss",
+    "category": [
+      "Python Developer"
+    ]
+  },
+  {
+    "name": "Indeed AI Jobs RSS",
+    "url": "https://www.indeed.com/rss?q=AI+Engineer+OR+Machine+Learning+Engineer",
+    "type": "rss",
+    "category": [
+      "AI Engineer",
+      "ML Engineer"
+    ]
+  }
+]
