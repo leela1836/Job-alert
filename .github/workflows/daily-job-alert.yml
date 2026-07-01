@@ -1,4 +1,4 @@
-name: Daily Job Alert
+name: Daily Job Alert agent
 
 on:
   schedule:
