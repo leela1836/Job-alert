@@ -38,9 +38,24 @@ def read_pdf_text(pdf_path: Path) -> str:
     return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
+def resolve_resume_text(resume_path: Path) -> tuple[str, str]:
+    """Return (text, where it came from).
+
+    RESUME_TEXT is preferred in CI. The base64 of the PDF is ~117 KB, which
+    exceeds GitHub's 48 KB limit for a single secret, and only the extracted
+    text is ever used for skill detection anyway.
+    """
+    from_env = os.environ.get("RESUME_TEXT", "").strip()
+    if from_env:
+        return from_env, "RESUME_TEXT secret"
+    if resume_path.exists():
+        return read_pdf_text(resume_path), str(resume_path.name)
+    return "", "nothing found"
+
+
 def build_profile(resume_path: Path) -> dict:
     preferences = load_preferences()
-    resume_text = read_pdf_text(resume_path) if resume_path.exists() else ""
+    resume_text, origin = resolve_resume_text(resume_path)
     lowered = resume_text.lower()
 
     # Word-boundary matched against a known vocabulary, so "ai" no longer
@@ -60,10 +75,10 @@ def build_profile(resume_path: Path) -> dict:
         f"Profile saved to {PROFILE_PATH.name}: "
         f"{len(profile['target_roles'])} target roles, "
         f"{len(profile['preferred_locations'])} locations, "
-        f"{len(detected)} skills detected from resume"
+        f"{len(detected)} skills detected (resume source: {origin})"
     )
     if not resume_text:
-        print(f"WARNING: no resume text read from {resume_path}")
+        print("WARNING: no resume text available - scoring falls back to job-search-profile.md only")
     return profile
 
 

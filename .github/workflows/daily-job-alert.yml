@@ -39,21 +39,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # The resume is kept out of the repo so the public repo carries no phone
-      # number or personal email. Store it as a base64 secret instead:
-      #   base64 -w0 Leelamohan_resume.pdf   (Linux/macOS)
-      #   certutil -encodehex -f resume.pdf out.txt 0x40000001   (Windows)
-      - name: Restore resume from secret
-        env:
-          RESUME_B64: ${{ secrets.RESUME_B64 }}
-        run: |
-          if [ -n "$RESUME_B64" ]; then
-            printf '%s' "$RESUME_B64" | base64 -d > Leelamohan_resume.pdf
-            echo "Resume restored ($(stat -c%s Leelamohan_resume.pdf) bytes)"
-          else
-            echo "::warning::RESUME_B64 not set - scoring will fall back to job-search-profile.md only"
-          fi
-
       - name: Restore answer bank from secret
         env:
           ANSWER_BANK: ${{ secrets.ANSWER_BANK_JSON }}
@@ -68,8 +53,13 @@ jobs:
       - name: Fetch jobs from all sources
         run: python scripts/fetch_jobs.py
 
+      # The resume text, not the PDF: base64 of the PDF is ~117 KB and GitHub
+      # caps a secret at 48 KB. Only the text is used for skill detection.
+      # Regenerate with: python scripts/export_resume_text.py
       - name: Build profile from resume
-        run: python scripts/job_alert.py build-profile --resume Leelamohan_resume.pdf
+        env:
+          RESUME_TEXT: ${{ secrets.RESUME_TEXT }}
+        run: python scripts/job_alert.py build-profile
 
       # Non-blocking on purpose: a mail failure (missing secret, expired app
       # password, Gmail hiccup) should not stop the dashboard from deploying.

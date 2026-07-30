@@ -52,26 +52,32 @@ hiding it.
 | `SMTP_PASSWORD` | Gmail **app password**, not your account password |
 | `FROM_EMAIL` | Your Gmail address |
 | `TO_EMAIL` | Where the alert is delivered |
-| `RESUME_B64` | Base64 of your resume PDF (see below) |
+| `RESUME_TEXT` | Plain text of your resume (see below) |
 | `ANSWER_BANK_JSON` | Contents of `data/answer_bank.json` |
 
-### Why the resume is a secret
+### Why the resume is a secret, and why it is text
 
 This repository is **public**. Committing the resume would publish your phone number
 and personal email. `.gitignore` blocks `*.pdf` and `data/answer_bank.json`, and the
-workflow restores both from secrets at runtime.
+workflow restores what it needs from secrets at runtime.
 
-To produce the secret value:
+The secret holds the resume **text**, not the PDF. Base64 of the PDF is around 117 KB
+and GitHub caps a single secret at **48 KB**, so the PDF cannot be stored that way.
+Only the extracted text is ever used — `build-profile` reads it purely to detect which
+skills you already have — and that is about 3 KB.
+
+Generate it with:
 
 ```bash
-base64 -w0 Leelamohan_resume.pdf          # Linux / macOS / Git Bash
+python scripts/export_resume_text.py
 ```
 
-```powershell
-[Convert]::ToBase64String([IO.File]::ReadAllBytes("Leelamohan_resume.pdf")) | Set-Clipboard
-```
+It writes `resume_text.txt` (gitignored) and copies the text to your clipboard. Paste
+that as `RESUME_TEXT`.
 
-Paste the result as `RESUME_B64`.
+**Re-run it whenever you update your resume**, otherwise the cloud run keeps scoring
+against the old version. Locally no secret is needed — if `RESUME_TEXT` is unset, the
+PDF in the working directory is read directly.
 
 ## Enabling GitHub Pages
 
