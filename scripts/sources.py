@@ -60,13 +60,14 @@ def board_url(ats: str, slug: str) -> str:
     }[ats]
 
 
-def parse_greenhouse(payload: object, company: str, tier: str) -> list[Job]:
+def parse_greenhouse(payload: object, company: str, tier: str, slug: str = "") -> list[Job]:
     jobs = []
     for item in (payload or {}).get("jobs", []) if isinstance(payload, dict) else []:
         title = _text(item.get("title"))
         if not title:
             continue
         location = _text((item.get("location") or {}).get("name"))
+        job_ref = item.get("id")
         jobs.append(
             Job(
                 company=company,
@@ -79,12 +80,19 @@ def parse_greenhouse(payload: object, company: str, tier: str) -> list[Job]:
                 ats="greenhouse",
                 tier=tier,
                 remote="remote" in location.lower(),
+                # The list endpoint omits descriptions; this is where the full
+                # posting lives if we later decide we need it.
+                detail_url=(
+                    f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs/{job_ref}"
+                    if slug and job_ref
+                    else ""
+                ),
             )
         )
     return jobs
 
 
-def parse_lever(payload: object, company: str, tier: str) -> list[Job]:
+def parse_lever(payload: object, company: str, tier: str, slug: str = "") -> list[Job]:
     jobs = []
     for item in payload if isinstance(payload, list) else []:
         title = _text(item.get("text"))
@@ -117,7 +125,7 @@ def parse_lever(payload: object, company: str, tier: str) -> list[Job]:
     return jobs
 
 
-def parse_ashby(payload: object, company: str, tier: str) -> list[Job]:
+def parse_ashby(payload: object, company: str, tier: str, slug: str = "") -> list[Job]:
     jobs = []
     for item in (payload or {}).get("jobs", []) if isinstance(payload, dict) else []:
         title = _text(item.get("title"))
@@ -154,7 +162,7 @@ def fetch_board(board: dict) -> tuple[list[Job], FetchReport]:
         return [], FetchReport(name, False, error=f"unknown ats '{ats}'")
     try:
         payload = fetch_json(board_url(ats, slug))
-        jobs = ATS_PARSERS[ats](payload, name, tier)
+        jobs = ATS_PARSERS[ats](payload, name, tier, slug)
         return jobs, FetchReport(name, True, len(jobs))
     except urllib.error.HTTPError as exc:
         return [], FetchReport(name, False, error=f"HTTP {exc.code}")
@@ -168,10 +176,11 @@ def fetch_greenhouse_description(job: Job) -> str:
     Only called for shortlisted jobs so we do not pull megabytes of HTML for
     hundreds of postings we are going to discard anyway.
     """
-    if job.ats != "greenhouse" or not job.apply_link:
+    if not job.detail_url:
         return ""
     try:
-        return strip_html(_text((fetch_json(job.apply_link.rstrip("/") + ".json") or {}).get("content")))
+        payload = fetch_json(job.detail_url)
+        return strip_html(_text((payload or {}).get("content")))
     except Exception:  # noqa: BLE001
         return ""
 

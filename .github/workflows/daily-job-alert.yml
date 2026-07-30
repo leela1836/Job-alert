@@ -85,6 +85,11 @@ jobs:
             --to "$TO_EMAIL" \
             ${{ inputs.resend_all && '--all' || '' }}
 
+      # Enriches Greenhouse descriptions for the shortlist, so this runs before
+      # the dashboard build and feeds it the skill-gap panel.
+      - name: Analyse skill gaps
+        run: python scripts/gap_analysis.py
+
       - name: Build dashboard
         run: python scripts/build_dashboard.py
 

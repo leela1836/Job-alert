@@ -12,6 +12,7 @@ import argparse
 import datetime
 import json
 
+from gap_analysis import GAP_REPORT_PATH
 from matching import load_preferences, rank_jobs
 from models import DOCS_DIR, JOBS_PATH, PROFILE_PATH, STATE_PATH, Job, load_json
 
@@ -38,10 +39,17 @@ def build_payload(limit: int) -> dict:
         entry["first_seen"] = seen.get(result.job.job_id, {}).get("first_seen", "")
         items.append(entry)
 
+    gap_report = load_json(GAP_REPORT_PATH, {})
+    if not isinstance(gap_report, dict):
+        gap_report = {}
+
     return {
         "generated_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "total_scanned": len(jobs),
         "jobs": items,
+        "gaps": gap_report.get("gaps", [])[:12],
+        "strengths": gap_report.get("strengths", [])[:8],
+        "gaps_analysed": gap_report.get("postings_analysed", 0),
     }
 
 
@@ -110,6 +118,17 @@ input[type=search]{flex:1;min-width:210px}
     padding:6px 11px;border-radius:9px;font-size:12px}
 .st.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
 .empty{text-align:center;color:var(--muted);padding:50px 20px}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:22px}
+.panel h2{margin:0 0 3px;font-size:15px}
+.panel .note{color:var(--muted);font-size:12px;margin-bottom:14px}
+.gcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px}
+.gcols h3{margin:0 0 9px;font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.bar{display:grid;grid-template-columns:118px 1fr 38px;gap:9px;align-items:center;margin:6px 0;font-size:12.5px}
+.bar .track{background:var(--chip);border-radius:99px;height:7px;overflow:hidden}
+.bar .fill{height:100%;border-radius:99px;background:#d97706}
+.bar.good .fill{background:#059669}
+.bar .pct{text-align:right;color:var(--muted);font-size:11.5px}
+.bar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 footer{margin-top:26px;text-align:center;color:var(--muted);font-size:11.5px;line-height:1.7}
 </style></head><body>
 <div class="wrap">
@@ -122,6 +141,21 @@ footer{margin-top:26px;text-align:center;color:var(--muted);font-size:11.5px;lin
   </header>
 
   <div class="stats" id="stats"></div>
+
+  <div class="panel" id="gapPanel" hidden>
+    <h2>Skill demand vs your resume</h2>
+    <div class="note" id="gapNote"></div>
+    <div class="gcols">
+      <div>
+        <h3>Missing from your resume</h3>
+        <div id="gapList"></div>
+      </div>
+      <div>
+        <h3>Already covered</h3>
+        <div id="strList"></div>
+      </div>
+    </div>
+  </div>
 
   <div class="controls">
     <input type="search" id="q" placeholder="Search role, company, location...">
@@ -234,6 +268,25 @@ function render(){
   renderStats();
 }
 
+function renderGaps(){
+  if (!DATA.gaps || !DATA.gaps.length) return;
+  document.getElementById('gapPanel').hidden = false;
+  document.getElementById('gapNote').textContent =
+    `Based on ${DATA.gaps_analysed} reachable postings you scored 50+ on. `
+    + `Percentages are the share of those postings that mention the skill.`;
+  const top = Math.max(...DATA.gaps.map(g => g.share), 1);
+  const bar = (name, share, title, good) =>
+    `<div class="bar ${good?'good':''}" title="${esc(title)}">
+       <span class="nm">${esc(name)}</span>
+       <span class="track"><span class="fill" style="width:${Math.round(100*share/top)}%"></span></span>
+       <span class="pct">${Math.round(share)}%</span>
+     </div>`;
+  document.getElementById('gapList').innerHTML =
+    DATA.gaps.map(g => bar(g.skill, g.share, (g.companies||[]).join(', '), false)).join('');
+  document.getElementById('strList').innerHTML =
+    (DATA.strengths||[]).map(s => bar(s.skill, s.share, 'Already on your resume', true)).join('');
+}
+
 el.list.addEventListener('click', e => {
   const b = e.target.closest('button[data-st]');
   if (!b) return;
@@ -253,6 +306,7 @@ document.getElementById('theme').addEventListener('click', () => {
 const saved = localStorage.getItem('jobalert.theme');
 if (saved) document.documentElement.dataset.theme = saved;
 
+renderGaps();
 render();
 </script>
 </body></html>

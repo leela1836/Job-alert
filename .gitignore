@@ -8,6 +8,7 @@
 # runs. It contains no personal data.
 data/jobs.json
 data/profile.json
+data/gap_report.json
 data/email_preview.html
 data/email_preview.json
 data/drafts/

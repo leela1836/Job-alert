@@ -25,9 +25,16 @@ _WS_RE = re.compile(r"\s+")
 
 
 def strip_html(text: str) -> str:
-    """Turn an HTML job description into flat text suitable for scoring and email."""
+    """Turn an HTML job description into flat text suitable for scoring and email.
+
+    Unescaping happens first because some providers (Greenhouse) return the
+    description as *escaped* markup - `&lt;div&gt;...`. Stripping tags before
+    unescaping would find nothing to strip and hand back raw HTML as if it were
+    prose.
+    """
     if not text:
         return ""
+    text = unescape(text)
     text = re.sub(r"(?is)<(script|style).*?</\1>", " ", text)
     text = re.sub(r"(?i)<(br|/p|/div|/li|/h[1-6])\s*/?>", "\n", text)
     text = _TAG_RE.sub(" ", text)
@@ -82,6 +89,8 @@ class Job:
     tier: str = ""
     remote: bool = False
     contact_email: str = ""
+    # API endpoint for the full description, when the list endpoint omits it.
+    detail_url: str = ""
     job_id: str = ""
 
     def __post_init__(self) -> None:
