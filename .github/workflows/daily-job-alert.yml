@@ -2,12 +2,29 @@ name: Daily Job Alert agent
 
 on:
   schedule:
+    # 12:30 UTC = 18:00 IST
     - cron: '30 12 * * *'
   workflow_dispatch:
+    inputs:
+      resend_all:
+        description: 'Include jobs already emailed before'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: job-alert
+  cancel-in-progress: false
 
 jobs:
-  send-alert:
+  alert:
     runs-on: ubuntu-latest
+    outputs:
+      matches: ${{ steps.report.outputs.matches }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,15 +39,40 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Refresh jobs from cloud sources
+      # The resume is kept out of the repo so the public repo carries no phone
+      # number or personal email. Store it as a base64 secret instead:
+      #   base64 -w0 Leelamohan_resume.pdf   (Linux/macOS)
+      #   certutil -encodehex -f resume.pdf out.txt 0x40000001   (Windows)
+      - name: Restore resume from secret
+        env:
+          RESUME_B64: ${{ secrets.RESUME_B64 }}
         run: |
-          python scripts/refresh_jobs.py
+          if [ -n "$RESUME_B64" ]; then
+            printf '%s' "$RESUME_B64" | base64 -d > Leelamohan_resume.pdf
+            echo "Resume restored ($(stat -c%s Leelamohan_resume.pdf) bytes)"
+          else
+            echo "::warning::RESUME_B64 not set - scoring will fall back to job-search-profile.md only"
+          fi
+
+      - name: Restore answer bank from secret
+        env:
+          ANSWER_BANK: ${{ secrets.ANSWER_BANK_JSON }}
+        run: |
+          if [ -n "$ANSWER_BANK" ]; then
+            printf '%s' "$ANSWER_BANK" > data/answer_bank.json
+            echo "Answer bank restored"
+          else
+            echo "::warning::ANSWER_BANK_JSON not set - cover notes will use placeholder details"
+          fi
+
+      - name: Fetch jobs from all sources
+        run: python scripts/fetch_jobs.py
 
       - name: Build profile from resume
-        run: |
-          python scripts/job_alert.py build-profile --resume Chemuru_Leelamohan_Resume.pdf
+        run: python scripts/job_alert.py build-profile --resume Leelamohan_resume.pdf
 
       - name: Send daily alert
+        id: report
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -39,4 +81,38 @@ jobs:
           FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
           TO_EMAIL: ${{ secrets.TO_EMAIL }}
         run: |
-          python scripts/job_alert.py report --to "$TO_EMAIL"
+          python scripts/job_alert.py report \
+            --to "$TO_EMAIL" \
+            ${{ inputs.resend_all && '--all' || '' }}
+
+      - name: Build dashboard
+        run: python scripts/build_dashboard.py
+
+      # Only data/state.json is committed. Everything personal is gitignored.
+      - name: Persist dedup state
+        run: |
+          git config user.name  "job-alert-bot"
+          git config user.email "actions@github.com"
+          git add data/state.json
+          if git diff --staged --quiet; then
+            echo "No state change"
+          else
+            git commit -m "chore: update job dedup state [skip ci]"
+            git push
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: alert
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

@@ -27,9 +27,17 @@
 ## Experience Level
 
 - Working Professional
-- 0–2 years experience
-- Open to Junior Engineer, Associate Engineer, and entry-level AI/Software roles
+- ~8 months of full-time experience (Associate Test Engineer at Mphasis, Dec 2025 – present)
+- Plus a 5-month internship at Mphasis (Jan – May 2025)
+- Open to Junior Engineer, Associate Engineer, SDE-I, and entry-level AI/Software roles
 - Prefer roles where current Mphasis experience is considered valuable
+
+---
+
+## Availability
+
+- Immediate joiner — no notice period to serve
+- This is a genuine advantage in the Indian market; lead with it in applications
 
 ---
 

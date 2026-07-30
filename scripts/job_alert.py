@@ -1,318 +1,388 @@
+"""Personal job search assistant: build a profile, score jobs, email the matches."""
+
 from __future__ import annotations
 
 import argparse
-from html import escape
-import json
+import datetime
 import os
 import smtplib
-from dataclasses import dataclass, asdict
 from email.message import EmailMessage
+from html import escape
 from pathlib import Path
-from typing import Iterable
 
-from pypdf import PdfReader
+from drafts import cover_note, load_answer_bank, screening_answers
+from matching import SKILL_VOCAB, count_terms, load_preferences, rank_jobs
+from models import (
+    BASE_DIR,
+    JOBS_PATH,
+    PROFILE_PATH,
+    STATE_PATH,
+    Job,
+    MatchResult,
+    load_json,
+    save_json,
+)
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
-PROFILE_PATH = DATA_DIR / "profile.json"
-JOBS_PATH = DATA_DIR / "jobs.json"
-STATE_PATH = DATA_DIR / "state.json"
-
-DEFAULT_PROFILE = {
-    "target_roles": [
-        "Python AI Engineer",
-        "Agentic AI Engineer",
-        "Software Engineer",
-        "SDET / Automation Engineer",
-    ],
-    "preferred_locations": ["Pune", "Mumbai", "Remote"],
-    "keywords": ["Python", "AI", "LLM", "Agents", "APIs", "Automation", "QA"],
-}
+DEFAULT_RESUME = BASE_DIR / "Leelamohan_resume.pdf"
+DASHBOARD_URL = "https://leela1836.github.io/Job-alert/"
 
 
-@dataclass
-class Job:
-    company: str
-    role: str
-    location: str = ""
-    source: str = ""
-    apply_link: str = ""
-    description: str = ""
-
-
-@dataclass
-class MatchResult:
-    job: Job
-    score: int
-    reasons: list[str]
-    missing: list[str]
-
+# --------------------------------------------------------------------------
+# Profile
+# --------------------------------------------------------------------------
 
 def read_pdf_text(pdf_path: Path) -> str:
+    from pypdf import PdfReader
+
     reader = PdfReader(str(pdf_path))
-    pages = []
-    for page in reader.pages:
-        pages.append(page.extract_text() or "")
-    return "\n".join(pages)
+    return "\n".join(page.extract_text() or "" for page in reader.pages)
 
 
-def extract_profile_from_resume(resume_text: str) -> dict:
+def build_profile(resume_path: Path) -> dict:
+    preferences = load_preferences()
+    resume_text = read_pdf_text(resume_path) if resume_path.exists() else ""
     lowered = resume_text.lower()
-    skills = []
-    for skill in ["python", "ai", "llm", "agents", "api", "automation", "qa", "pytest", "selenium", "playwright", "sql"]:
-        if skill in lowered:
-            skills.append(skill)
 
-    summary = resume_text[:1200].strip()
-    profile = dict(DEFAULT_PROFILE)
+    # Word-boundary matched against a known vocabulary, so "ai" no longer
+    # matches "email" the way the old substring check did.
+    detected = count_terms(lowered, SKILL_VOCAB)
+    profile = dict(preferences)
     profile.update(
         {
-            "resume_summary": summary,
-            "detected_skills": skills,
+            "detected_skills": sorted(set(detected + preferences.get("skills", []))),
+            "resume_found": bool(resume_text),
             "resume_length": len(resume_text),
+            "generated_at": datetime.date.today().isoformat(),
         }
     )
+    save_json(PROFILE_PATH, profile)
+    print(
+        f"Profile saved to {PROFILE_PATH.name}: "
+        f"{len(profile['target_roles'])} target roles, "
+        f"{len(profile['preferred_locations'])} locations, "
+        f"{len(detected)} skills detected from resume"
+    )
+    if not resume_text:
+        print(f"WARNING: no resume text read from {resume_path}")
     return profile
 
 
-def save_json(path: Path, payload: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+# --------------------------------------------------------------------------
+# Email rendering
+# --------------------------------------------------------------------------
+
+BG = "#0f172a"
+CARD = "#ffffff"
+BORDER = "#e2e8f0"
+INK = "#0f172a"
+MUTED = "#64748b"
+ACCENT = "#4f46e5"
 
 
-def load_json(path: Path, default: object) -> object:
-    if not path.exists():
-        return default
-    return json.loads(path.read_text(encoding="utf-8"))
+def score_colour(score: int) -> str:
+    if score >= 85:
+        return "#059669"
+    if score >= 70:
+        return "#0284c7"
+    return "#d97706"
 
 
-def load_jobs(path: Path) -> list[Job]:
-    raw_jobs = load_json(path, [])
-    jobs: list[Job] = []
-    for item in raw_jobs:
-        jobs.append(Job(**item))
-    return jobs
-
-
-def score_job(job: Job, profile: dict) -> MatchResult:
-    text = f"{job.company} {job.role} {job.location} {job.description}".lower()
-    score = 0
-    reasons: list[str] = []
-    missing: list[str] = []
-
-    target_roles = [role.lower() for role in profile.get("target_roles", [])]
-    preferred_locations = [loc.lower() for loc in profile.get("preferred_locations", [])]
-    keywords = [kw.lower() for kw in profile.get("keywords", [])]
-    detected_skills = [skill.lower() for skill in profile.get("detected_skills", [])]
-
-    if any(role in text for role in target_roles):
-        score += 35
-        reasons.append("Role matches a target title")
-
-    if any(loc in text for loc in preferred_locations):
-        score += 20
-        reasons.append("Location matches preference")
-
-    matched_keywords = [kw for kw in keywords if kw in text or kw in detected_skills]
-    if matched_keywords:
-        score += min(35, len(matched_keywords) * 7)
-        reasons.append(f"Matches keywords: {', '.join(matched_keywords[:5])}")
-
-    if "qa" in text or "automation" in text or "selenium" in text or "playwright" in text:
-        score += 10
-        reasons.append("Contains QA/automation signals")
-    if "ai" in text or "llm" in text or "agent" in text:
-        score += 10
-        reasons.append("Contains AI/agent signals")
-
-    if "cloud" not in text and "aws" not in text and "azure" not in text:
-        missing.append("cloud deployment experience")
-    if "testing" not in text and "qa" not in text:
-        missing.append("testing emphasis")
-
-    score = max(0, min(100, score))
-    return MatchResult(job=job, score=score, reasons=reasons[:4], missing=missing[:3])
-
-
-def filter_jobs(jobs: Iterable[Job], profile: dict, threshold: int = 70) -> list[MatchResult]:
-    results = [score_job(job, profile) for job in jobs]
-    return sorted((result for result in results if result.score >= threshold), key=lambda item: item.score, reverse=True)
-
-
-def format_email_text(results: list[MatchResult]) -> str:
+def format_email_text(results: list[MatchResult], total_jobs: int) -> str:
     if not results:
-        return "\n".join(
-            [
-                "🤖 AI Job Assistant | Daily Job Matches",
-                "Hello Mohan,",
-                "No strong job matches were found today.",
-                "The agent will continue searching and notify you when relevant roles appear.",
-                "━━━━━━━━━━━━━━━━━━━━━━",
-                "Generated by:",
-                "Your Personal AI Job Search Agent 🤖",
-            ]
+        return (
+            "AI Job Assistant - Daily Matches\n\n"
+            f"No new matches today. {total_jobs} postings were scanned; everything "
+            "scoring well has already been sent to you previously.\n\n"
+            f"Dashboard: {DASHBOARD_URL}\n"
         )
 
     lines = [
-        "🤖 AI Job Assistant | Daily Job Matches",
-        "Hello Mohan,",
-        f"Your AI assistant found {len(results)} relevant opportunities today.",
-        "",
-        "Target Profile:",
-        "• Python AI Engineer",
-        "• Agentic AI Engineer",
-        "• Software Engineer",
-        "• Cloud Engineer",
-        "• SDET / Automation Engineer",
-        "━━━━━━━━━━━━━━━━━━━━━━",
-        "🔥 TOP MATCHES",
+        "AI JOB ASSISTANT - DAILY MATCHES",
+        f"{len(results)} new matches out of {total_jobs} postings scanned.",
+        f"Dashboard: {DASHBOARD_URL}",
+        "=" * 52,
         "",
     ]
-
-    for index, result in enumerate(results[:10], start=1):
+    for index, result in enumerate(results, start=1):
         job = result.job
-        lines.append(f"{index}) {job.role}")
-        lines.append("")
-        lines.append("🏢 Company:")
-        lines.append(job.company)
-        lines.append("")
-        lines.append("📍 Location:")
-        lines.append(job.location or "Not specified")
-        lines.append("")
-        lines.append("⭐ Match Score:")
-        lines.append(f"{result.score}%")
-        lines.append("")
-        if result.reasons:
-            lines.append("Why this matches:")
-            for reason in result.reasons:
-                lines.append(f"✓ {reason}")
-            lines.append("")
-        if result.missing:
-            lines.append("Skill gaps:")
-            for item in result.missing:
-                lines.append(f"• {item}")
-            lines.append("")
+        lines.append(f"{index}. [{result.score}%] {job.role}")
+        lines.append(f"   {job.company} | {job.location or 'Location not stated'}")
+        for reason in result.reasons:
+            lines.append(f"   + {reason}")
+        for gap in result.missing:
+            lines.append(f"   - {gap}")
+        if job.contact_email:
+            lines.append(f"   Contact: {job.contact_email}")
         if job.apply_link:
-            lines.append("🔗 Apply:")
-            lines.append(job.apply_link)
-            lines.append("")
-        lines.append("━━━━━━━━━━━━━━━━━━━━━━")
+            lines.append(f"   Apply: {job.apply_link}")
         lines.append("")
-
-    lines.extend(
-        [
-            "📊 DAILY SUMMARY",
-            "",
-            f"Jobs shortlisted: {len(results)}",
-            "",
-            "🚀 Recommended Action:",
-            "Review high-score matches first and tailor your resume before applying.",
-            "",
-            "━━━━━━━━━━━━━━━━━━━━━━",
-            "Generated by:",
-            "Your Personal AI Job Search Agent 🤖",
-            "Powered by Python + GitHub Actions",
-        ]
-    )
     return "\n".join(lines)
 
 
-def format_email_html(results: list[MatchResult]) -> str:
-        text_version = format_email_text(results)
-        return f"""
-        <html>
-            <body style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,sans-serif;color:#111827;">
-                <div style="max-width:860px;margin:0 auto;padding:24px;">
-                    <div style="background:#111827;color:#ffffff;border-radius:18px;padding:24px 22px;margin-bottom:16px;">
-                        <div style="font-size:30px;line-height:1.2;font-weight:900;">🤖 AI Job Assistant | Daily Job Matches</div>
-                        <div style="margin-top:12px;font-size:16px;opacity:.9;">Formatted exactly like your requested daily report.</div>
-                    </div>
-                    <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:22px;">
-                        <pre style="margin:0;white-space:pre-wrap;word-wrap:break-word;font-family:Consolas,Menlo,Monaco,monospace;font-size:14px;line-height:1.6;color:#111827;">{escape(text_version)}</pre>
-                    </div>
-                </div>
-            </body>
-        </html>
-        """.strip()
+def _chip(text: str, colour: str, background: str) -> str:
+    return (
+        f'<span style="display:inline-block;padding:3px 9px;border-radius:99px;'
+        f'font-size:11px;font-weight:700;color:{colour};background:{background};'
+        f'letter-spacing:.02em;">{escape(text)}</span>'
+    )
 
 
-def send_email(subject: str, text_body: str, to_email: str, html_body: str | None = None) -> None:
+def _job_card(index: int, result: MatchResult) -> str:
+    job = result.job
+    colour = score_colour(result.score)
+    chips = []
+    if job.location:
+        chips.append(_chip(job.location[:38], "#334155", "#f1f5f9"))
+    if job.tier == "india":
+        chips.append(_chip("India board", "#166534", "#dcfce7"))
+    if job.remote:
+        chips.append(_chip("Remote", "#3730a3", "#e0e7ff"))
+    if job.posted_at:
+        chips.append(_chip(job.posted_at, "#475569", "#f1f5f9"))
+
+    reasons = "".join(
+        f'<div style="font-size:13px;color:#166534;margin:3px 0;">&#10003; {escape(r)}</div>'
+        for r in result.reasons
+    )
+    gaps = "".join(
+        f'<div style="font-size:13px;color:#9a3412;margin:3px 0;">&#8722; {escape(g)}</div>'
+        for g in result.missing
+    )
+    contact = ""
+    if job.contact_email:
+        contact = (
+            f'<div style="font-size:13px;margin-top:8px;color:{MUTED};">Published contact: '
+            f'<a href="mailto:{escape(job.contact_email)}" style="color:{ACCENT};">'
+            f"{escape(job.contact_email)}</a></div>"
+        )
+    button = ""
+    if job.apply_link:
+        button = (
+            f'<a href="{escape(job.apply_link)}" style="display:inline-block;margin-top:12px;'
+            f'padding:9px 18px;background:{ACCENT};color:#ffffff;text-decoration:none;'
+            f'border-radius:8px;font-size:13px;font-weight:700;">Apply &rarr;</a>'
+        )
+
+    return f"""
+    <tr><td style="padding:0 0 14px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+             style="background:{CARD};border:1px solid {BORDER};border-radius:14px;">
+        <tr>
+          <td style="padding:18px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:top;">
+                  <div style="font-size:12px;color:{MUTED};font-weight:700;">#{index} &middot; {escape(job.company)}</div>
+                  <div style="font-size:17px;font-weight:800;color:{INK};margin:4px 0 10px 0;line-height:1.35;">
+                    {escape(job.role)}
+                  </div>
+                  <div>{" ".join(chips)}</div>
+                </td>
+                <td width="64" style="vertical-align:top;text-align:right;">
+                  <div style="display:inline-block;min-width:52px;padding:8px 6px;border-radius:12px;
+                              background:{colour};color:#ffffff;text-align:center;">
+                    <div style="font-size:19px;font-weight:800;line-height:1;">{result.score}</div>
+                    <div style="font-size:9px;letter-spacing:.08em;opacity:.85;">MATCH</div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+            <div style="margin-top:12px;">{reasons}{gaps}</div>
+            {contact}
+            {button}
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+    """
+
+
+def format_email_html(results: list[MatchResult], total_jobs: int, bank: dict) -> str:
+    today = datetime.date.today().strftime("%d %b %Y")
+
+    if not results:
+        body = (
+            f'<tr><td style="background:{CARD};border:1px solid {BORDER};border-radius:14px;'
+            f'padding:28px;text-align:center;color:{MUTED};font-size:14px;">'
+            f"No new matches today.<br>{total_jobs} postings scanned - everything strong has "
+            "already been sent to you.</td></tr>"
+        )
+        extras = ""
+    else:
+        body = "".join(_job_card(i, r) for i, r in enumerate(results, start=1))
+
+        notes = ""
+        for result in results[:3]:
+            notes += (
+                f'<div style="margin-bottom:14px;">'
+                f'<div style="font-size:13px;font-weight:700;color:{INK};margin-bottom:6px;">'
+                f"{escape(result.job.role)} &middot; {escape(result.job.company)}</div>"
+                f'<pre style="margin:0;padding:12px;background:#f8fafc;border:1px solid {BORDER};'
+                f"border-radius:10px;white-space:pre-wrap;word-wrap:break-word;font-family:ui-monospace,"
+                f'Consolas,monospace;font-size:12px;line-height:1.55;color:#334155;">'
+                f"{escape(cover_note(result, bank))}</pre></div>"
+            )
+        answers = "".join(
+            f'<tr><td style="padding:5px 10px 5px 0;font-size:12px;color:{MUTED};white-space:nowrap;">'
+            f'{escape(q)}</td><td style="padding:5px 0;font-size:12px;color:{INK};font-weight:600;">'
+            f"{escape(str(a))}</td></tr>"
+            for q, a in screening_answers(bank)
+            if a
+        )
+        extras = f"""
+        <tr><td style="padding:20px 0 8px 0;">
+          <div style="font-size:13px;font-weight:800;color:#ffffff;letter-spacing:.06em;">READY-TO-SEND COVER NOTES</div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:3px;">Top 3 matches. Edit before sending.</div>
+        </td></tr>
+        <tr><td style="background:{CARD};border:1px solid {BORDER};border-radius:14px;padding:18px;">
+          {notes}
+        </td></tr>
+        <tr><td style="padding:20px 0 8px 0;">
+          <div style="font-size:13px;font-weight:800;color:#ffffff;letter-spacing:.06em;">SCREENING ANSWERS</div>
+        </td></tr>
+        <tr><td style="background:{CARD};border:1px solid {BORDER};border-radius:14px;padding:18px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">{answers}</table>
+        </td></tr>
+        """
+
+    return f"""<!DOCTYPE html>
+<html><body style="margin:0;padding:0;background:{BG};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{BG};padding:24px 12px;">
+<tr><td align="center">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;">
+
+    <tr><td style="padding-bottom:20px;">
+      <div style="font-size:24px;font-weight:800;color:#ffffff;letter-spacing:-.02em;">
+        AI Job Assistant
+      </div>
+      <div style="font-size:13px;color:#94a3b8;margin-top:5px;">
+        {today} &middot; {len(results)} new match{"" if len(results) == 1 else "es"} from {total_jobs} postings scanned
+      </div>
+      <a href="{DASHBOARD_URL}" style="display:inline-block;margin-top:12px;padding:8px 16px;
+         background:rgba(255,255,255,.1);color:#e2e8f0;text-decoration:none;border-radius:8px;
+         font-size:12px;font-weight:600;border:1px solid rgba(255,255,255,.15);">Open dashboard &rarr;</a>
+    </td></tr>
+
+    {body}
+    {extras}
+
+    <tr><td style="padding-top:22px;text-align:center;color:#64748b;font-size:11px;line-height:1.6;">
+      Generated by your personal job agent &middot; Python + GitHub Actions<br>
+      Jobs already sent to you are never repeated.
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body></html>"""
+
+
+# --------------------------------------------------------------------------
+# Sending
+# --------------------------------------------------------------------------
+
+def send_email(subject: str, text_body: str, html_body: str, to_email: str) -> None:
     smtp_host = os.environ.get("SMTP_HOST", "")
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_port = int(os.environ.get("SMTP_PORT", "587") or 587)
     smtp_user = os.environ.get("SMTP_USER", "")
     smtp_password = os.environ.get("SMTP_PASSWORD", "")
     from_email = os.environ.get("FROM_EMAIL", smtp_user)
 
-    if not smtp_host or not smtp_user or not smtp_password or not from_email:
-        raise RuntimeError("Missing SMTP configuration. Set SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, and FROM_EMAIL.")
+    missing = [
+        name
+        for name, value in [
+            ("SMTP_HOST", smtp_host),
+            ("SMTP_USER", smtp_user),
+            ("SMTP_PASSWORD", smtp_password),
+            ("FROM_EMAIL", from_email),
+        ]
+        if not value
+    ]
+    if missing:
+        raise RuntimeError("Missing SMTP configuration: " + ", ".join(missing))
 
     message = EmailMessage()
     message["Subject"] = subject
     message["From"] = from_email
     message["To"] = to_email
     message.set_content(text_body)
-    if html_body:
-        message.add_alternative(html_body, subtype="html")
+    message.add_alternative(html_body, subtype="html")
 
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
+    with smtplib.SMTP(smtp_host, smtp_port, timeout=45) as server:
         server.starttls()
         server.login(smtp_user, smtp_password)
         server.send_message(message)
 
 
-def build_profile(resume_path: Path) -> None:
-    resume_text = read_pdf_text(resume_path)
-    profile = extract_profile_from_resume(resume_text)
-    save_json(PROFILE_PATH, profile)
-    print(f"Saved profile to {PROFILE_PATH}")
+# --------------------------------------------------------------------------
+# Report
+# --------------------------------------------------------------------------
+
+def load_ranked(only_new: bool, limit: int) -> tuple[list[MatchResult], int, dict]:
+    profile = load_json(PROFILE_PATH, None) or load_preferences()
+    raw_jobs = load_json(JOBS_PATH, [])
+    jobs = [Job(**item) for item in raw_jobs] if isinstance(raw_jobs, list) else []
+
+    state = load_json(STATE_PATH, {})
+    seen = state.get("seen", {}) if isinstance(state, dict) else {}
+
+    ranked = rank_jobs(jobs, profile, limit=limit * 3)
+    for result in ranked:
+        entry = seen.get(result.job.job_id, {})
+        result.first_seen = entry.get("first_seen", "")
+        result.is_new = not entry.get("emailed", False)
+
+    if only_new:
+        ranked = [r for r in ranked if r.is_new]
+    return ranked[:limit], len(jobs), state
 
 
-def run_report(to_email: str) -> None:
-    profile = load_json(PROFILE_PATH, DEFAULT_PROFILE)
-    jobs = load_jobs(JOBS_PATH)
-    matches = filter_jobs(jobs, profile)
-    text_body = format_email_text(matches)
-    html_body = format_email_html(matches)
-    send_email("Top AI and QA Jobs for You", text_body, to_email, html_body=html_body)
-    print(f"Sent report to {to_email}")
+def run_report(to_email: str, only_new: bool, limit: int, dry_run: bool) -> None:
+    results, total_jobs, state = load_ranked(only_new, limit)
+    bank = load_answer_bank()
 
+    text_body = format_email_text(results, total_jobs)
+    html_body = format_email_html(results, total_jobs, bank)
+    subject = (
+        f"{len(results)} new job match{'' if len(results) == 1 else 'es'} - "
+        f"{datetime.date.today().strftime('%d %b')}"
+        if results
+        else f"No new job matches - {datetime.date.today().strftime('%d %b')}"
+    )
 
-def init_sample_jobs() -> None:
-    sample_jobs = [
-        {
-            "company": "Example AI Labs",
-            "role": "Python AI Engineer - LLM Agents",
-            "location": "Remote",
-            "source": "Sample",
-            "apply_link": "https://example.com/apply",
-            "description": "Build AI agents, APIs, and automation workflows using Python and LLMs.",
-        },
-        {
-            "company": "QA Systems",
-            "role": "SDET Automation Engineer",
-            "location": "Pune",
-            "source": "Sample",
-            "apply_link": "https://example.com/apply2",
-            "description": "Automate regression testing with Playwright, Python, and CI/CD.",
-        },
-    ]
-    save_json(JOBS_PATH, sample_jobs)
-    print(f"Saved sample jobs to {JOBS_PATH}")
+    if dry_run:
+        preview = BASE_DIR / "data" / "email_preview.html"
+        save_json(BASE_DIR / "data" / "email_preview.json", {"subject": subject})
+        preview.write_text(html_body, encoding="utf-8")
+        print(text_body)
+        print(f"\n[dry run] no email sent. HTML preview written to {preview}")
+        return
+
+    send_email(subject, text_body, html_body, to_email)
+    print(f"Sent {len(results)} matches to {to_email}")
+
+    seen = state.setdefault("seen", {})
+    for result in results:
+        seen.setdefault(result.job.job_id, {})["emailed"] = True
+    save_json(STATE_PATH, state)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Personal job search assistant")
-    parser.add_argument("command", choices=["build-profile", "sample-jobs", "report"])
-    parser.add_argument("--resume", type=Path, default=BASE_DIR / "Chemuru_Leelamohan_Resume.pdf")
-    parser.add_argument("--to", default="mohan.leelachemuru@gmail.com")
+    parser.add_argument("command", choices=["build-profile", "report"])
+    parser.add_argument("--resume", type=Path, default=DEFAULT_RESUME)
+    parser.add_argument("--to", default=os.environ.get("TO_EMAIL", ""))
+    parser.add_argument("--limit", type=int, default=12)
+    parser.add_argument("--all", action="store_true", help="include jobs already emailed")
+    parser.add_argument("--dry-run", action="store_true", help="render the email without sending")
     args = parser.parse_args()
 
     if args.command == "build-profile":
         build_profile(args.resume)
-    elif args.command == "sample-jobs":
-        init_sample_jobs()
-    elif args.command == "report":
-        run_report(args.to)
+    else:
+        if not args.to and not args.dry_run:
+            raise SystemExit("No recipient. Pass --to or set TO_EMAIL.")
+        run_report(args.to, only_new=not args.all, limit=args.limit, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

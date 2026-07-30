@@ -1,0 +1,20 @@
+{
+  "_comment": "Copy this to answer_bank.json and fill in your real details. answer_bank.json is gitignored because it contains your phone number and email.",
+  "full_name": "Your Name",
+  "email": "you@example.com",
+  "phone": "+91 00000 00000",
+  "linkedin": "https://linkedin.com/in/your-handle",
+  "github": "https://github.com/your-handle",
+  "portfolio": "",
+  "current_location": "City, India",
+  "willing_to_relocate": "Yes - open to Bangalore, Hyderabad, Chennai, Pune",
+  "notice_period": "Immediate joiner",
+  "current_company": "Company Name",
+  "current_title": "Your Title",
+  "total_experience": "8 months",
+  "current_ctc": "Prefer to discuss",
+  "expected_ctc": "6 LPA onwards, negotiable based on role",
+  "work_authorization": "Indian citizen, authorised to work in India",
+  "highest_qualification": "B.Tech, 2025",
+  "why_this_company": "I follow the engineering work here and want to build in this space."
+}

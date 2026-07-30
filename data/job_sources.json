@@ -1,90 +1,33 @@
 [
   {
-    "name": "Y Combinator Startup Jobs",
-    "url": "https://www.ycombinator.com/jobs/",
-    "type": "web",
-    "category": [
-      "AI Engineer",
-      "Agentic AI",
-      "LLM Engineer",
-      "Software Engineer",
-      "Backend Engineer",
-      "Startup Engineering"
-    ],
-    "locations": [
-      "Bangalore",
-      "Hyderabad",
-      "Chennai",
-      "Mumbai",
-      "Pune",
-      "Remote"
-    ]
+    "name": "RemoteOK",
+    "url": "https://remoteok.com/api",
+    "type": "remoteok",
+    "note": "The .rss endpoints return 410 Gone; the JSON API is the live one."
   },
   {
-    "name": "AI Jobs Feed",
-    "url": "https://aijobs.net/feed/",
-    "type": "rss",
-    "category": [
-      "AI Engineer",
-      "Machine Learning",
-      "LLM"
-    ]
+    "name": "Arbeitnow",
+    "url": "https://www.arbeitnow.com/api/job-board-api",
+    "type": "arbeitnow"
   },
   {
-    "name": "Hacker News Who Is Hiring",
+    "name": "Remotive",
+    "url": "https://remotive.com/api/remote-jobs?limit=200",
+    "type": "remotive"
+  },
+  {
+    "name": "Himalayas",
+    "url": "https://himalayas.app/jobs/api?limit=100",
+    "type": "himalayas"
+  },
+  {
+    "name": "Jobicy",
+    "url": "https://jobicy.com/api/v2/remote-jobs?count=50",
+    "type": "jobicy"
+  },
+  {
+    "name": "Hacker News Jobs",
     "url": "https://hnrss.org/jobs",
-    "type": "rss",
-    "category": [
-      "Software Engineer",
-      "Startup",
-      "Backend"
-    ]
-  },
-  {
-    "name": "We Work Remotely Programming Jobs",
-    "url": "https://weworkremotely.com/categories/remote-programming-jobs.rss",
-    "type": "rss",
-    "category": [
-      "Remote Developer",
-      "Python",
-      "Backend"
-    ]
-  },
-  {
-    "name": "Remote OK AI Jobs",
-    "url": "https://remoteok.com/remote-ai-jobs.rss",
-    "type": "rss",
-    "category": [
-      "AI",
-      "ML",
-      "LLM"
-    ]
-  },
-  {
-    "name": "Remote OK Developer Jobs",
-    "url": "https://remoteok.com/remote-dev-jobs.rss",
-    "type": "rss",
-    "category": [
-      "Software Engineer",
-      "Backend",
-      "Cloud"
-    ]
-  },
-  {
-    "name": "Indeed Python Jobs RSS",
-    "url": "https://www.indeed.com/rss?q=python+developer",
-    "type": "rss",
-    "category": [
-      "Python Developer"
-    ]
-  },
-  {
-    "name": "Indeed AI Jobs RSS",
-    "url": "https://www.indeed.com/rss?q=AI+Engineer+OR+Machine+Learning+Engineer",
-    "type": "rss",
-    "category": [
-      "AI Engineer",
-      "ML Engineer"
-    ]
+    "type": "rss"
   }
 ]
