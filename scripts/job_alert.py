@@ -339,13 +339,21 @@ def load_ranked(only_new: bool, limit: int) -> tuple[list[MatchResult], int, dic
     jobs = [Job(**item) for item in raw_jobs] if isinstance(raw_jobs, list) else []
 
     state = load_json(STATE_PATH, {})
-    seen = state.get("seen", {}) if isinstance(state, dict) else {}
+    if not isinstance(state, dict):
+        state = {}
+    emailed = state.get("emailed", {})
+    if not emailed and isinstance(state.get("seen"), dict):
+        # Pre-migration state file; fetch_jobs.py rewrites it on the next run.
+        emailed = {
+            job_id: entry.get("last_seen", "")
+            for job_id, entry in state["seen"].items()
+            if isinstance(entry, dict) and entry.get("emailed")
+        }
 
     ranked = rank_jobs(jobs, profile, limit=limit * 3)
     for result in ranked:
-        entry = seen.get(result.job.job_id, {})
-        result.first_seen = entry.get("first_seen", "")
-        result.is_new = not entry.get("emailed", False)
+        result.first_seen = emailed.get(result.job.job_id, "")
+        result.is_new = result.job.job_id not in emailed
 
     if only_new:
         ranked = [r for r in ranked if r.is_new]
@@ -376,9 +384,10 @@ def run_report(to_email: str, only_new: bool, limit: int, dry_run: bool) -> None
     send_email(subject, text_body, html_body, to_email)
     print(f"Sent {len(results)} matches to {to_email}")
 
-    seen = state.setdefault("seen", {})
+    today = datetime.date.today().isoformat()
+    sent = state.setdefault("emailed", {})
     for result in results:
-        seen.setdefault(result.job.job_id, {})["emailed"] = True
+        sent[result.job.job_id] = today
     save_json(STATE_PATH, state)
 
 

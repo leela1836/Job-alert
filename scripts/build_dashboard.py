@@ -27,7 +27,7 @@ def build_payload(limit: int) -> dict:
     raw = load_json(JOBS_PATH, [])
     jobs = [Job(**item) for item in raw] if isinstance(raw, list) else []
     state = load_json(STATE_PATH, {})
-    seen = state.get("seen", {}) if isinstance(state, dict) else {}
+    emailed = state.get("emailed", {}) if isinstance(state, dict) else {}
 
     ranked = rank_jobs(jobs, profile, threshold=55, floor=40, limit=limit)
     items = []
@@ -36,7 +36,7 @@ def build_payload(limit: int) -> dict:
         entry["score"] = result.score
         entry["reasons"] = result.reasons
         entry["missing"] = result.missing
-        entry["first_seen"] = seen.get(result.job.job_id, {}).get("first_seen", "")
+        entry["emailed_on"] = emailed.get(result.job.job_id, "")
         items.append(entry)
 
     gap_report = load_json(GAP_REPORT_PATH, {})
@@ -103,7 +103,9 @@ input[type=search]{flex:1;min-width:210px}
       font-size:11px;font-weight:650}
 .chip.in{background:#dcfce7;color:#166534}
 .chip.rm{background:#e0e7ff;color:#3730a3}
-@media (prefers-color-scheme:dark){.chip.in{background:#0d3b23;color:#7ee2ab}.chip.rm{background:#242a5c;color:#b3b9f5}}
+.chip.sent{background:#fef3c7;color:#92400e}
+@media (prefers-color-scheme:dark){.chip.in{background:#0d3b23;color:#7ee2ab}.chip.rm{background:#242a5c;color:#b3b9f5}
+  .chip.sent{background:#3f2d10;color:#fcd34d}}
 .score{min-width:56px;text-align:center;border-radius:12px;padding:9px 7px;color:#fff}
 .score b{display:block;font-size:19px;line-height:1}
 .score span{font-size:9px;letter-spacing:.08em;opacity:.85}
@@ -240,6 +242,7 @@ function render(){
       j.tier === 'india' ? '<span class="chip in">India board</span>' : '',
       j.remote ? '<span class="chip rm">Remote</span>' : '',
       j.posted_at ? `<span class="chip">${esc(j.posted_at)}</span>` : '',
+      j.emailed_on ? `<span class="chip sent">Emailed ${esc(j.emailed_on)}</span>` : '',
       `<span class="chip">${esc(j.source)}</span>`,
     ].join('');
     const why = (j.reasons||[]).map(r => `<div class="ok">&#10003; ${esc(r)}</div>`).join('')
