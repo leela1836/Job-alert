@@ -71,8 +71,11 @@ jobs:
       - name: Build profile from resume
         run: python scripts/job_alert.py build-profile --resume Leelamohan_resume.pdf
 
+      # Non-blocking on purpose: a mail failure (missing secret, expired app
+      # password, Gmail hiccup) should not stop the dashboard from deploying.
       - name: Send daily alert
         id: report
+        continue-on-error: true
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -92,6 +95,13 @@ jobs:
 
       - name: Build dashboard
         run: python scripts/build_dashboard.py
+
+      - name: Flag a failed send
+        if: steps.report.outcome == 'failure'
+        run: |
+          echo "::warning::Email step failed - dashboard still deployed. Check the SMTP_* secrets."
+          echo "### :warning: Email not sent" >> $GITHUB_STEP_SUMMARY
+          echo "The dashboard deployed, but the alert email failed. Verify \`SMTP_HOST\`, \`SMTP_USER\`, \`SMTP_PASSWORD\`, \`FROM_EMAIL\` and \`TO_EMAIL\`." >> $GITHUB_STEP_SUMMARY
 
       # Only data/state.json is committed. Everything personal is gitignored.
       - name: Persist dedup state
