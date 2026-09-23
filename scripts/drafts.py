@@ -15,21 +15,26 @@ ANSWER_BANK_EXAMPLE = DATA_DIR / "answer_bank.example.json"
 # Evidence to reach for, picked by what the posting is actually about.
 EVIDENCE = {
     "ai": (
-        "I built A-MATS, an autonomous multi-agent system that screens NSE stocks, reasons about "
-        "trade decisions, executes paper trades and learns from outcomes - scheduled in the cloud "
-        "with GitHub Actions and fronted by a live self-updating dashboard, benchmarked against buy-and-hold."
+        "I built A-MATS, an autonomous AI-powered trading platform in Python that analyses NSE stocks, "
+        "generates trade decisions, executes paper trades and tracks portfolio performance - orchestrated "
+        "on GitHub Actions with a live self-updating dashboard. I also built an image classification "
+        "solution using YOLO + MySQL for automated defect detection, and a recommendation engine with "
+        "Pandas, NumPy and Scikit-learn."
     ),
     "qa": (
-        "At Mphasis I design and maintain reusable Appium + TestNG + Java automation frameworks for "
-        "Android and iOS, and previously built API test suites with Rest Assured and Cucumber (BDD)."
+        "During my internship at Mphasis I implemented automated API validation frameworks using Java, "
+        "Rest Assured and Cucumber BDD, and validated REST APIs, JSON payloads and SQL queries against "
+        "backend services following Page Object Model principles."
     ),
     "backend": (
-        "I work in Python and Java day to day, have built REST APIs and data pipelines, and recently "
-        "shipped an end-to-end automated pipeline for my A-MATS trading agent project."
+        "At Mphasis I engineer Python-based backend components for financial transaction processing, "
+        "validation and workflow orchestration, design REST APIs for service-to-service communication, "
+        "and use MySQL for data validation and query optimisation - all in Linux/Agile environments."
     ),
     "cloud": (
-        "I run my own projects on GitHub Actions - scheduled cloud jobs, automated data pipelines and "
-        "a self-updating deployed dashboard - so CI/CD and cloud automation are things I use, not just study."
+        "I use AWS (EC2, S3, IAM, CloudWatch), Docker and GitHub Actions in my own projects - including "
+        "A-MATS, which runs scheduled cloud workflows multiple times daily and deploys a live dashboard. "
+        "CI/CD and cloud automation are things I actively build with, not just study."
     ),
 }
 

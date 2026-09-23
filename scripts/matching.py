@@ -93,12 +93,26 @@ INDIA_CITIES = [
 ]
 
 SKILL_VOCAB = [
-    "python", "java", "typescript", "javascript", "react", "node.js", "node", "express",
-    "sql", "mongodb", "rest api", "api", "git", "github actions", "postman",
+    # Languages
+    "python", "java", "sql", "javascript", "typescript", "shell scripting",
+    # Backend / APIs
+    "rest api", "rest apis", "api", "api integration", "json", "swagger", "openapi",
+    "workflow orchestration", "microservices",
+    # Web frameworks
+    "react", "node.js", "node", "express", "django", "flask", "fastapi",
+    # Databases
+    "mysql", "postgresql", "mongodb", "redis",
+    # QA / Automation
     "appium", "selenium", "testng", "cucumber", "rest assured", "webdriver", "playwright",
-    "pytest", "junit", "bdd", "ci/cd", "agile", "oop", "data structures",
+    "pytest", "junit", "bdd", "postman", "page object model", "api testing",
+    # AI / ML
     "machine learning", "deep learning", "llm", "langchain", "pandas", "scikit-learn",
-    "numpy", "pytorch", "tensorflow", "yolo", "docker", "kubernetes", "aws", "azure", "gcp",
+    "numpy", "pytorch", "tensorflow", "yolo", "computer vision", "recommendation system",
+    # Cloud / DevOps
+    "aws", "ec2", "s3", "cloudwatch", "azure", "gcp", "docker", "kubernetes",
+    "github actions", "ci/cd", "git",
+    # Practices
+    "agile", "oop", "data structures", "algorithms", "sdlc", "linux",
 ]
 
 SENIOR_MARKERS = ["staff", "principal", "lead ", "head of", "director", "vp ", "manager", "architect", "distinguished"]

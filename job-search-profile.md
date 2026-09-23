@@ -2,9 +2,9 @@
 
 ## Target Roles
 
-- Python AI Engineer
-- Agentic AI Engineer
+- Python Backend Engineer
 - AI/ML Engineer
+- Agentic AI Engineer
 - LLM Engineer
 - Software Engineer
 - Backend Python Developer
@@ -17,6 +17,7 @@
 ## Preferred Locations
 
 - Bangalore
+- Bengaluru
 - Hyderabad
 - Chennai
 - Pune
@@ -27,10 +28,10 @@
 ## Experience Level
 
 - Working Professional
-- ~8 months of full-time experience (Associate Test Engineer at Mphasis, Dec 2025 – present)
-- Plus a 5-month internship at Mphasis (Jan – May 2025)
+- ~8 months of full-time experience (Associate Engineer at Mphasis, Dec 2025 – Aug 2026)
+- Plus a 5-month internship at Mphasis (Jan – May 2025, Bengaluru)
 - Open to Junior Engineer, Associate Engineer, SDE-I, and entry-level AI/Software roles
-- Prefer roles where current Mphasis experience is considered valuable
+- Prefer roles where current Mphasis backend experience is considered valuable
 
 ---
 
@@ -45,11 +46,10 @@
 
 - Starting from 6 LPA
 - Open to opportunities based on:
-
-- Role responsibilities
-- Technical growth
-- Company/product quality
-- Learning opportunities
+  - Role responsibilities
+  - Technical growth
+  - Company/product quality
+  - Learning opportunities
 
 ---
 
@@ -59,27 +59,31 @@
 
 - Python
 - Java
-- TypeScript
 - SQL
+- Shell Scripting
 
 ### AI / Machine Learning
 
-- Artificial Intelligence
 - Machine Learning
+- Deep Learning
 - LLMs
 - Agentic AI
 - Prompt Engineering
-- AI Assistants
+- Computer Vision (YOLO)
 - Recommendation Systems
-- Deep Learning basics
+- scikit-learn
+- pandas
+- numpy
 
 ### Backend / Development
 
 - REST APIs
+- JSON
 - API Integration
-- Backend development concepts
-- Data handling
-- Software engineering practices
+- Backend development
+- Financial transaction processing
+- Workflow orchestration
+- Python scripting
 
 ### Automation / QA
 
@@ -92,71 +96,81 @@
 - Mobile Application Testing
 - Manual Testing
 - Automation Framework Development
+- Page Object Model
+
+### Cloud & DevOps
+
+- AWS (EC2, S3, IAM, CloudWatch)
+- Docker
+- GitHub Actions
+- CI/CD
+- Git
+
+### Database
+
+- MySQL
 
 ### Tools / Platforms
 
 - Git
+- GitHub
+- Postman
+- Swagger / OpenAPI
 - Linux / Ubuntu
-- Cloud Technologies (learning and development-focused roles)
+
+### Concepts
+
+- OOP
+- Data Structures
+- Algorithms
+- SDLC
+- Agile
 
 ---
 
 # Project Highlights
 
-## Personalized AI Assistant (Agentic AI)
+## A-MATS – Autonomous AI Trading Agent
 
-- Developing a personalized AI Assistant to explore Agentic AI capabilities.
-- Focus areas:
+- Architected an autonomous AI-powered trading platform in Python that analyzes NSE stocks,
+  generates trade decisions, executes paper trades, and tracks portfolio performance.
+- Orchestrated scheduled market scans and cloud workflows using GitHub Actions running multiple times daily.
+- Created a live dashboard visualizing trade history, portfolio positions, performance metrics,
+  and benchmark comparisons.
+- Designed a modular system architecture supporting end-to-end automation, data pipelines,
+  and AI-driven decision-making.
 
-- User intent understanding
-- AI-driven workflows
-- Context management
-- Intelligent automation
-- Tool usage and autonomous task execution
+---
+
+## Image Classification for Quality Control (YOLO + MySQL)
+
+- Implemented a computer vision solution using YOLO for automated defect detection
+  and classification in manufacturing datasets.
+- Integrated MySQL to persist image metadata, prediction results, and quality reports.
+- Optimized inspection workflows through real-time image analysis and automated reporting.
 
 ---
 
 ## Movie Recommendation System
 
-- Built a personalized recommendation system using:
-
-- Python
-- Pandas
-- Scikit-learn
-- Implemented:
-
-- Content-based filtering
-- Collaborative filtering
-- User preference analysis
-- Recommendation logic
+- Engineered a recommendation engine using Python, Pandas, NumPy, and Scikit-learn.
+- Applied content-based and collaborative filtering algorithms for personalized recommendations.
+- Performed data preprocessing, feature engineering, and model evaluation.
 
 ---
 
-## AI/ML Projects
+# Education
 
-- Worked on machine learning projects involving:
-
-- Image classification
-- Prediction models
-- Data preprocessing
-- Model evaluation
+- B.Tech in AI & ML — Annamacharya Institute of Technology and Sciences (2022–2025), CGPA: 8.17
+- Diploma in DME — Sree Vidyanikethan Engineering College (2019–2022), 86.28%
 
 ---
 
-## Automation Framework Projects
+# Certifications
 
-- Built and maintained automation solutions using:
-
-- Appium
-- Java
-- Selenium
-- Rest Assured
-- Cucumber
-- Focus:
-
-- Reducing regression effort
-- Improving test coverage
-- API validation
+- Java Full Stack Developer – Wipro TalentNext (2024)
+- AI/ML Foundation – Edunet Foundation (2024)
+- Software Engineering Internship Certificate – Mphasis (2025)
 
 ---
 
@@ -167,14 +181,14 @@ Prioritize:
 - Product companies
 - AI-first companies
 - Startups building AI products
+- Fintech companies
 - Cloud-focused engineering teams
 - Companies working on:
-
-- LLM applications
-- Automation
-- Intelligent platforms
-- SaaS products
-- Developer tools
+  - LLM applications
+  - Automation
+  - Intelligent platforms
+  - SaaS products
+  - Developer tools
 
 ---
 
@@ -182,13 +196,7 @@ Prioritize:
 
 Avoid:
 
-- Roles completely unrelated to:
-
-- AI
-- Software development
-- Cloud
-- Automation
-- Engineering
+- Roles completely unrelated to AI, software development, cloud, automation, or engineering
 - Non-technical roles
 - Roles with limited learning opportunities
 - Jobs outside preferred locations without remote options
@@ -199,33 +207,26 @@ Avoid:
 # Notes for the Agent
 
 - Prioritize roles matching:
-
-- Python + AI
-- LLMs
-- Agentic AI
-- APIs
-- Cloud
-- Backend development
-- QA automation
+  - Python + backend
+  - AI/ML/LLMs/Agentic AI
+  - APIs and microservices
+  - Cloud (AWS)
+  - QA automation
 - Give higher priority to:
-
-- AI engineering roles
-- Product companies
-- Engineering-driven teams
-- Companies building real AI solutions
+  - AI engineering roles
+  - Fintech product companies
+  - Engineering-driven teams
+  - Companies building real AI solutions
 - Penalize:
-
-- Roles far outside target locations
-- Roles requiring significantly higher experience
-- Roles unrelated to current skill set
+  - Roles far outside target locations
+  - Roles requiring significantly more experience (5+ years)
+  - Roles unrelated to current skill set
 - Avoid:
-
-- Duplicate job recommendations
-- Companies already applied to
-- Jobs already rejected
+  - Duplicate job recommendations
+  - Companies already applied to
+  - Jobs already rejected
 - Prioritize:
-
-- Recently posted jobs
-- Roles with strong skill matching
-- Jobs with growth potential
-- Companies using modern technologies
+  - Recently posted jobs
+  - Roles with strong skill matching
+  - Jobs with growth potential
+  - Companies using modern technologies

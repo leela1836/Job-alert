@@ -48,6 +48,14 @@ def _text(value: object) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
+def _bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "yes", "1"}
+    return bool(value)
+
+
 # --------------------------------------------------------------------------
 # Applicant tracking systems (per-company boards)
 # --------------------------------------------------------------------------
@@ -57,6 +65,8 @@ def board_url(ats: str, slug: str) -> str:
         "greenhouse": f"https://boards-api.greenhouse.io/v1/boards/{slug}/jobs",
         "lever": f"https://api.lever.co/v0/postings/{slug}?mode=json",
         "ashby": f"https://api.ashbyhq.com/posting-api/job-board/{slug}",
+        "smartrecruiters": f"https://api.smartrecruiters.com/v1/companies/{slug}/postings?limit=100",
+        "workable": f"https://apply.workable.com/api/v3/accounts/{slug}/jobs",
     }[ats]
 
 
@@ -150,7 +160,76 @@ def parse_ashby(payload: object, company: str, tier: str, slug: str = "") -> lis
     return jobs
 
 
-ATS_PARSERS = {"greenhouse": parse_greenhouse, "lever": parse_lever, "ashby": parse_ashby}
+def parse_smartrecruiters(payload: object, company: str, tier: str, slug: str = "") -> list[Job]:
+    jobs = []
+    for item in (payload or {}).get("content", []) if isinstance(payload, dict) else []:
+        title = _text(item.get("name"))
+        if not title:
+            continue
+        loc = item.get("location") or {}
+        # fullLocation is the most human-readable field ("Bengaluru, KA, India")
+        location = _text(loc.get("fullLocation") or loc.get("city") or "")
+        remote = _bool(loc.get("remote")) or _bool(item.get("typeOfRemote"))
+        job_id = item.get("id", "")
+        # The ref field is an API URL, not a human apply URL; construct the real one
+        apply_link = f"https://jobs.smartrecruiters.com/{slug}/{job_id}" if job_id else ""
+        posted_at = _text(item.get("releasedDate") or "")[:10]
+        jobs.append(
+            Job(
+                company=company,
+                role=title,
+                location=location,
+                source=f"{company} (SmartRecruiters)",
+                apply_link=apply_link,
+                description="",
+                posted_at=posted_at,
+                ats="smartrecruiters",
+                tier=tier,
+                remote=remote,
+            )
+        )
+    return jobs
+
+
+def parse_workable(payload: object, company: str, tier: str, slug: str = "") -> list[Job]:
+    jobs = []
+    for item in (payload or {}).get("results", []) if isinstance(payload, dict) else []:
+        title = _text(item.get("title"))
+        if not title:
+            continue
+        location_data = item.get("location")
+        location = _text(
+            (location_data.get("location_str") if isinstance(location_data, dict) else "")
+            or item.get("location_str")
+            or ""
+        )
+        remote = _bool(item.get("remote")) or "remote" in location.lower()
+        apply_link = _text(item.get("url")) or _text(item.get("shortlink"))
+        posted_at = _text(item.get("published_on") or item.get("created_at") or "")[:10]
+        jobs.append(
+            Job(
+                company=company,
+                role=title,
+                location=location,
+                source=f"{company} (Workable)",
+                apply_link=apply_link,
+                description=strip_html(_text(item.get("description") or item.get("requirements") or "")),
+                posted_at=posted_at,
+                ats="workable",
+                tier=tier,
+                remote=remote,
+            )
+        )
+    return jobs
+
+
+ATS_PARSERS = {
+    "greenhouse": parse_greenhouse,
+    "lever": parse_lever,
+    "ashby": parse_ashby,
+    "smartrecruiters": parse_smartrecruiters,
+    "workable": parse_workable,
+}
 
 
 def fetch_board(board: dict) -> tuple[list[Job], FetchReport]:
